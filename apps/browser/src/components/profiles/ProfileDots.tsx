@@ -1,4 +1,5 @@
-import { Animated, Pressable, View } from "react-native";
+import { ContextMenuArea, showMenu, Symbol } from "@ardia/shell";
+import { Animated, Pressable, Text, View } from "react-native";
 import { useShallow } from "zustand/react/shallow";
 import { switchProfile } from "../../lib/actions";
 import { useTheme } from "../../lib/theme";
@@ -6,6 +7,8 @@ import { useBrowser } from "../../store/browser";
 import { useIsIncognito } from "../../store/hooks";
 import { usePagerPages, type PagerPage } from "../layout/profilePager";
 import { useHover } from "../primitives";
+import { openSettings } from "../settings/windows";
+import { iconMenuItems, profileSymbol } from "./icons";
 
 export const PROFILE_DOTS_HEIGHT = 41;
 const CELL = 12;
@@ -14,6 +17,10 @@ const BAND = 28;
 const SELECTED = 0.85;
 const HOVERED = 0.4;
 const IDLE = 0.2;
+const ICON_CELL = 22;
+const ICON = 13;
+const ICON_HOVERED = 0.7;
+const ICON_IDLE = 0.45;
 
 export function useProfileDotsShown() {
   const incognito = useIsIncognito();
@@ -38,18 +45,43 @@ export function ProfileDots({ windowId }: { windowId: string }) {
 function Dot({ id, windowId, page, pos }: { id: string; windowId: string; page: PagerPage | undefined; pos: Animated.Value }) {
   const theme = useTheme();
   const name = useBrowser((s) => s.profiles[id]?.name ?? "");
+  const icon = useBrowser((s) => s.profiles[id]?.icon ?? null);
+  const symbol = profileSymbol(icon);
   const { hovered, hoverProps } = useHover();
-  const rest = hovered ? HOVERED : IDLE;
+  const ink = theme.dark ? "#FFFFFF" : "#000000";
+  const rest = icon ? (hovered ? ICON_HOVERED : ICON_IDLE) : hovered ? HOVERED : IDLE;
+  const selected = icon ? 1 : SELECTED;
   const opacity = page
-    ? pos.interpolate({ inputRange: [page.slot - 1, page.slot, page.slot + 1], outputRange: [rest, SELECTED, rest], extrapolate: "clamp" })
+    ? pos.interpolate({ inputRange: [page.slot - 1, page.slot, page.slot + 1], outputRange: [rest, selected, rest], extrapolate: "clamp" })
     : rest;
   return (
     <View {...hoverProps} tooltip={name}>
-      <Pressable accessibilityRole="button" accessibilityLabel={name} onPress={() => switchProfile(windowId, id, true)}>
-        <View style={{ width: CELL, height: BAND, alignItems: "center", justifyContent: "center" }}>
-          <Animated.View style={{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: theme.dark ? "#FFFFFF" : "#000000", opacity }} />
-        </View>
-      </Pressable>
+      <ContextMenuArea onContextMenu={() => void openDotMenu(id)}>
+        <Pressable accessibilityRole="button" accessibilityLabel={name} onPress={() => switchProfile(windowId, id, true)}>
+          <View style={{ width: icon ? ICON_CELL : CELL, height: BAND, alignItems: "center", justifyContent: "center" }}>
+            <Animated.View style={{ opacity }}>
+              {symbol ? (
+                <Symbol name={symbol} size={ICON} weight="semibold" color={ink} style={{ width: ICON_CELL, height: BAND }} />
+              ) : icon ? (
+                <Text style={{ fontSize: ICON }}>{icon}</Text>
+              ) : (
+                <View style={{ width: DOT, height: DOT, borderRadius: DOT / 2, backgroundColor: ink }} />
+              )}
+            </Animated.View>
+          </View>
+        </Pressable>
+      </ContextMenuArea>
     </View>
   );
+}
+
+async function openDotMenu(id: string) {
+  const icon = useBrowser.getState().profiles[id]?.icon ?? null;
+  const choice = await showMenu([
+    { id: "icon", title: "Icon", symbol: "face.smiling", children: iconMenuItems(icon) },
+    { separator: true },
+    { id: "edit", title: "Edit Profile…", symbol: "pencil" },
+  ]);
+  if (choice?.startsWith("icon:")) useBrowser.getState().updateProfile(id, { icon: choice.slice("icon:".length) || null });
+  else if (choice === "edit") openSettings("profiles", id);
 }
