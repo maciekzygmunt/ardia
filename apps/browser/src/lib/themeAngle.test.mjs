@@ -54,7 +54,7 @@ test("an angle turns the whole gradient, the third colour with it", () => {
   for (const [x, y] of points(1200, 800)) near(themeArea(turned, x, y, 1200, 800), themeArea(THEME, 1200 - x, 800 - y, 1200, 800), `315° at ${x},${y}`);
   const across = { ...THEME, stops: THEME.stops.slice(0, 2), angle: 90 };
   near(themeArea(across, 0, 0, 1200, 800), themeArea(across, 0, 800, 1200, 800), "90° is the same down the left edge");
-  assert.notDeepEqual(opaqueThemeTint(turned, false), opaqueThemeTint(THEME, false), "the tint follows the turned gradient");
+  assert.deepEqual(opaqueThemeTint(turned, false), opaqueThemeTint(THEME, false).reverse(), "the tint's corners swap with the turned gradient");
 });
 
 test("the angle survives sanitizing, in both looks, and reaches the backdrop", () => {
