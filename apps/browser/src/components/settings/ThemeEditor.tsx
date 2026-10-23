@@ -352,7 +352,7 @@ function LightnessBar({ theme, index, onChange }: { theme: ProfileTheme; index: 
         bar={
           <View style={{ height: 8, borderRadius: 4, overflow: "hidden", flexDirection: "row" }}>
             {Array.from({ length: LIGHTNESS_STEPS }, (_, i) => (
-              <View key={i} style={{ flex: 1, backgroundColor: colorHex(padColor(stop.x, stop.y, (i + 0.5) / LIGHTNESS_STEPS)) }} />
+              <View key={i} style={{ flex: 1, backgroundColor: colorHex(padColor(stop.x, stop.y, i / (LIGHTNESS_STEPS - 1))) }} />
             ))}
           </View>
         }
