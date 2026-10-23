@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 import {
   colorHex,
+  DEFAULT_THEME_ANGLE,
   flatColors,
   MAX_THEME_STOPS,
   PAD_LIGHTNESS,
@@ -135,7 +136,7 @@ const RAINBOW: ProfileTheme = {
 function CustomSwatch({ theme }: { theme: ProfileTheme | null }) {
   return (
     <View style={{ flex: 1, borderRadius: 8, overflow: "hidden" }}>
-      <ThemeSwatch colors={flatColors(theme ?? RAINBOW)} style={{ flex: 1 }} />
+      <ThemeSwatch colors={flatColors(theme ?? RAINBOW)} angle={theme?.angle} style={{ flex: 1 }} />
     </View>
   );
 }
@@ -192,6 +193,10 @@ function ThemeEditor({ theme, onChange }: { theme: ProfileTheme; onChange: (next
           />
         </Slider>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ width: LABEL + 10, fontSize: 12, color: ui.textPrimary }}>Direction</Text>
+          <DirectionControl angle={theme.angle ?? DEFAULT_THEME_ANGLE} onChange={(angle) => onChange({ ...theme, angle }, true)} />
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text style={{ width: LABEL + 10, fontSize: 12, color: ui.textPrimary }}>Appearance</Text>
           <View style={{ flexDirection: "row", borderRadius: 6, backgroundColor: colors.control, borderWidth: StyleSheet.hairlineWidth * 2, borderColor: colors.controlBorder, padding: 1 }}>
             {MODES.map((m) => (
@@ -217,11 +222,42 @@ function ThemeEditor({ theme, onChange }: { theme: ProfileTheme; onChange: (next
   );
 }
 
+function DirectionControl({ angle, onChange }: { angle: number; onChange: (angle: number) => void }) {
+  const ui = useTheme();
+  const colors = useFormColors();
+  const step = (by: number) => onChange((((angle + by) % 360) + 360) % 360);
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <SmallButton symbol="arrow.counterclockwise" tooltip="Rotate Left" onPress={() => step(-45)} />
+      <Pressable onPress={() => step(45)} tooltip="Rotate Right">
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: colors.control,
+            borderWidth: StyleSheet.hairlineWidth * 2,
+            borderColor: colors.controlBorder,
+          }}
+        >
+          <View style={{ transform: [{ rotate: `${angle}deg` }] }}>
+            <Symbol name="arrow.up" size={10} weight="semibold" color={ui.icon} style={{ width: 12, height: 12 }} />
+          </View>
+        </View>
+      </Pressable>
+      <SmallButton symbol="arrow.clockwise" tooltip="Rotate Right" onPress={() => step(45)} />
+      <Text style={{ marginLeft: 4, fontSize: 11.5, color: ui.textSecondary, fontVariant: ["tabular-nums"] }}>{Math.round(angle)}°</Text>
+    </View>
+  );
+}
+
 function Preview({ theme }: { theme: ProfileTheme }) {
   const ui = useTheme();
   return (
     <View style={{ height: 58, borderRadius: 9, overflow: "hidden" }}>
-      <ThemeSwatch colors={flatColors(theme)} grain={themeGrainAlpha(theme)} texture={theme.texture} style={StyleSheet.absoluteFill} />
+      <ThemeSwatch colors={flatColors(theme)} grain={themeGrainAlpha(theme)} texture={theme.texture} angle={theme.angle} style={StyleSheet.absoluteFill} />
       <View style={{ position: "absolute", left: 8, top: 10, width: 34, gap: 5 }}>
         {[1, 0.7, 0.85].map((w, i) => (
           <View key={i} style={{ width: `${w * 100}%`, height: 4, borderRadius: 2, backgroundColor: ui.dark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.18)" }} />
