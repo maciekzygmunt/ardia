@@ -226,18 +226,18 @@ function SidebarPage({ profileId, slot, width, current, resting, docked, glowRoo
     }),
   );
   const edge = useMemo(() => scrollY.interpolate({ inputRange: [0, 1], outputRange: [0, room], extrapolate: "clamp" }), [scrollY, room]);
-  const fixed = useRef({ height: 0, list: 0 });
-  const report = () => onListHeight(profileId, fixed.current.height + fixed.current.list + playerHeight);
+  const fixed = useRef<{ height: number; list: number | null }>({ height: 0, list: null });
+  const report = () => onListHeight(profileId, fixed.current.height + (fixed.current.list ?? 0) + playerHeight);
   const reportList = (list: number) => {
     fixed.current.list = list;
     report();
   };
   const onFixedLayout = (e: LayoutChangeEvent) => {
     fixed.current.height = e.nativeEvent.layout.height;
-    if (fixed.current.list) report();
+    if (fixed.current.list !== null) report();
   };
   useEffect(() => {
-    if (fixed.current.list) report();
+    if (fixed.current.list !== null) report();
   }, [playerHeight]);
   const inlineNewTab = !docked;
 
