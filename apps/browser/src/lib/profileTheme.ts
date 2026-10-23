@@ -180,7 +180,7 @@ export function stopLightness(stop: ThemeStop): number {
 }
 
 export function withStopAt(theme: ProfileTheme, index: number, x: number, y: number): ProfileTheme {
-  const stops = theme.stops.map((s, i) => (i === index ? { x, y, color: padColor(x, y, stopLightness(s)) } : s));
+  const stops = theme.stops.map((s, i) => (i === index ? { x, y, color: { ...padColor(x, y, stopLightness(s)), a: s.color.a } } : s));
   return { ...theme, stops };
 }
 

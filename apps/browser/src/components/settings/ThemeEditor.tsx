@@ -441,7 +441,11 @@ function Track({
           borderWidth: thumbColor ? 2 : StyleSheet.hairlineWidth * 2,
           borderColor: thumbColor ? "#FFFFFF" : "rgba(0,0,0,0.2)",
         }}
-      />
+      >
+        {thumbColor ? (
+          <View style={{ position: "absolute", left: -3, top: -3, right: -3, bottom: -3, borderRadius: thumb / 2 + 3, borderWidth: 1, borderColor: "rgba(0,0,0,0.25)" }} />
+        ) : null}
+      </View>
     </View>
   );
 }
