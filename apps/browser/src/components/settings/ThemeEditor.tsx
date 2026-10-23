@@ -39,6 +39,8 @@ const MODES: { value: ThemeMode; symbol: string; title: string }[] = [
 ];
 
 const TEXTURE_NAMES: Record<ThemeTexture, string> = { grain: "Grain", sand: "Sand", denim: "Denim", tweed: "Tweed" };
+const DIAL = 28;
+const DIAL_SNAP = 4;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -194,7 +196,7 @@ function ThemeEditor({ theme, onChange }: { theme: ProfileTheme; onChange: (next
         </Slider>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text style={{ width: LABEL + 10, fontSize: 12, color: ui.textPrimary }}>Direction</Text>
-          <DirectionControl angle={theme.angle ?? DEFAULT_THEME_ANGLE} onChange={(angle) => onChange({ ...theme, angle }, true)} />
+          <DirectionDial angle={theme.angle ?? DEFAULT_THEME_ANGLE} onChange={(angle, settle) => onChange({ ...theme, angle }, settle)} />
         </View>
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text style={{ width: LABEL + 10, fontSize: 12, color: ui.textPrimary }}>Appearance</Text>
@@ -222,33 +224,47 @@ function ThemeEditor({ theme, onChange }: { theme: ProfileTheme; onChange: (next
   );
 }
 
-function DirectionControl({ angle, onChange }: { angle: number; onChange: (angle: number) => void }) {
+function DirectionDial({ angle, onChange }: { angle: number; onChange: (angle: number, settle: boolean) => void }) {
   const ui = useTheme();
   const colors = useFormColors();
-  const step = (by: number) => onChange((((angle + by) % 360) + 360) % 360);
+  const ref = useRef<View>(null);
+  const centre = useRef({ x: 0, y: 0 });
+  const measure = () => ref.current?.measureInWindow((x, y, width, height) => (centre.current = { x: x + width / 2, y: y + height / 2 }));
+  const at = (e: GestureResponderEvent) => {
+    const dx = e.nativeEvent.pageX - centre.current.x, dy = e.nativeEvent.pageY - centre.current.y;
+    const degrees = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+    const notch = Math.round(degrees / 45) * 45;
+    return (Math.abs(degrees - notch) <= DIAL_SNAP ? notch : Math.round(degrees)) % 360;
+  };
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-      <SmallButton symbol="arrow.counterclockwise" tooltip="Rotate Left" onPress={() => step(-45)} />
-      <Pressable onPress={() => step(45)} tooltip="Rotate Right">
-        <View
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 10,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.control,
-            borderWidth: StyleSheet.hairlineWidth * 2,
-            borderColor: colors.controlBorder,
-          }}
-        >
-          <View style={{ transform: [{ rotate: `${angle}deg` }] }}>
-            <Symbol name="arrow.up" size={10} weight="semibold" color={ui.icon} style={{ width: 12, height: 12 }} />
-          </View>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <View
+        ref={ref}
+        onLayout={measure}
+        onMouseEnter={measure}
+        style={{
+          width: DIAL,
+          height: DIAL,
+          borderRadius: DIAL / 2,
+          backgroundColor: colors.control,
+          borderWidth: StyleSheet.hairlineWidth * 2,
+          borderColor: colors.controlBorder,
+        }}
+        onStartShouldSetResponder={() => true}
+        onResponderGrant={(e) => {
+          measure();
+          onChange(at(e), false);
+        }}
+        onResponderMove={(e) => onChange(at(e), false)}
+        onResponderRelease={(e) => onChange(at(e), true)}
+        onResponderTerminate={() => onChange(angle, true)}
+      >
+        <View pointerEvents="none" style={{ position: "absolute", left: -1, top: -1, width: DIAL, height: DIAL, transform: [{ rotate: `${angle}deg` }] }}>
+          <View style={{ position: "absolute", left: DIAL / 2 - 1, top: 4, width: 2, height: DIAL / 2 - 4, borderRadius: 1, backgroundColor: colors.accent }} />
         </View>
-      </Pressable>
-      <SmallButton symbol="arrow.clockwise" tooltip="Rotate Right" onPress={() => step(45)} />
-      <Text style={{ marginLeft: 4, fontSize: 11.5, color: ui.textSecondary, fontVariant: ["tabular-nums"] }}>{Math.round(angle)}°</Text>
+        <View pointerEvents="none" style={{ position: "absolute", left: DIAL / 2 - 3.5, top: DIAL / 2 - 3.5, width: 5, height: 5, borderRadius: 2.5, backgroundColor: colors.accent }} />
+      </View>
+      <Text style={{ fontSize: 11.5, color: ui.textSecondary, fontVariant: ["tabular-nums"] }}>{Math.round(angle)}°</Text>
     </View>
   );
 }
