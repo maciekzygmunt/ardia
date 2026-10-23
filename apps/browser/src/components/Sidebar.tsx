@@ -52,14 +52,14 @@ export function Sidebar({ width }: { width: number }) {
   const current = useWindowProfileId();
   const { pages, paging } = usePagerPages(windowId);
   const [available, setAvailable] = useState(0);
-  const listHeight = useRef(0);
+  const listHeights = useRef(new Map<string, number>());
   const [, setDockChanges] = useState(0);
-  const dockedAt = (list: number) => available > 0 && list + ROW_PITCH + 12 > available;
-  const docked = dockedAt(listHeight.current);
-  const onListHeight = (height: number) => {
-    const before = dockedAt(listHeight.current);
-    listHeight.current = height;
-    if (dockedAt(height) !== before) setDockChanges((n) => n + 1);
+  const dockedPage = (profileId: string) => available > 0 && (listHeights.current.get(profileId) ?? 0) + ROW_PITCH + 12 > available;
+  const docked = dockedPage(current);
+  const onListHeight = (profileId: string, height: number) => {
+    const before = dockedPage(profileId);
+    listHeights.current.set(profileId, height);
+    if (dockedPage(profileId) !== before) setDockChanges((n) => n + 1);
   };
   const scroll = useRef<ScrollView>(null);
   const scrollY = useRef(0);
@@ -106,7 +106,8 @@ export function Sidebar({ width }: { width: number }) {
                 width={width}
                 current={page.id === current}
                 resting={!!page.resting}
-                docked={docked}
+                docked={dockedPage(page.id)}
+                bottom={dockedPage(page.id) && !docked ? DOCK : 0}
                 glowRoom={glowRoom}
                 height={available}
                 rows={page.id === current ? undefined : Math.ceil(available / ROW_PITCH) + 1}
@@ -131,11 +132,11 @@ export function Sidebar({ width }: { width: number }) {
             </View>
           ) : null}
 
-          {docked ? (
-            <View style={{ position: "absolute", left: layout.sidebarInset, right: layout.sidebarInset, bottom: DOCKED_BOTTOM + footer }}>
-              <NewTabRow windowId={windowId} />
-            </View>
-          ) : null}
+          <View pointerEvents="box-none" style={{ position: "absolute", left: 0, right: 0, bottom: DOCKED_BOTTOM + footer, height: layout.rowHeight, overflow: "hidden" }}>
+            {pages.map((page) =>
+              !page.resting && dockedPage(page.id) ? <PageDock key={page.id} profileId={page.id} slot={page.slot} width={width} current={page.id === current} /> : null,
+            )}
+          </View>
 
           {footer ? (
             <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: footer }}>
@@ -186,16 +187,17 @@ type PageProps = {
   current: boolean;
   resting: boolean;
   docked: boolean;
+  bottom: number;
   glowRoom: number;
   height: number;
   rows: number | undefined;
   geometry: RefObject<SidebarGeometry> | undefined;
-  onListHeight: (height: number) => void;
+  onListHeight: (profileId: string, height: number) => void;
   onScrollView: (view: ScrollView | null) => void;
   onScrollY: (y: number) => void;
 };
 
-function SidebarPage({ profileId, slot, width, current, resting, docked, glowRoom, height, rows, geometry, onListHeight, onScrollView, onScrollY }: PageProps) {
+function SidebarPage({ profileId, slot, width, current, resting, docked, bottom, glowRoom, height, rows, geometry, onListHeight, onScrollView, onScrollY }: PageProps) {
   const windowId = useWindowId();
   const topGap = listTopGap(useAddressBarInSidebar());
   const pageStyle = usePageStyle(windowId, slot, width);
@@ -243,18 +245,18 @@ function SidebarPage({ profileId, slot, width, current, resting, docked, glowRoo
   const fixed = useRef({ height: 0, list: 0 });
   const reportList = (list: number) => {
     fixed.current.list = list;
-    onListHeight(fixed.current.height + list);
+    onListHeight(profileId, fixed.current.height + list);
   };
   const onFixedLayout = (e: LayoutChangeEvent) => {
     fixed.current.height = e.nativeEvent.layout.height;
-    if (current && fixed.current.list) onListHeight(fixed.current.height + fixed.current.list);
+    if (fixed.current.list) onListHeight(profileId, fixed.current.height + fixed.current.list);
   };
-  const inlineNewTab = !current || !docked;
+  const inlineNewTab = !docked;
 
   return (
     <Animated.View
       pointerEvents={current ? "auto" : "none"}
-      style={{ position: "absolute", top: 0, bottom: 0, left: 0, width, display: resting ? "none" : "flex", ...pageStyle }}
+      style={{ position: "absolute", top: 0, bottom, left: 0, width, display: resting ? "none" : "flex", ...pageStyle }}
     >
       <PageProfileContext.Provider value={profileId}>
         <ThemeScope>
@@ -317,6 +319,20 @@ function SidebarPage({ profileId, slot, width, current, resting, docked, glowRoo
   );
 }
 
+function PageDock({ profileId, slot, width, current }: { profileId: string; slot: number; width: number; current: boolean }) {
+  const windowId = useWindowId();
+  const pageStyle = usePageStyle(windowId, slot, width);
+  return (
+    <Animated.View pointerEvents={current ? "auto" : "none"} style={{ position: "absolute", top: 0, left: 0, width, paddingHorizontal: layout.sidebarInset, ...pageStyle }}>
+      <PageProfileContext.Provider value={profileId}>
+        <ThemeScope>
+          <NewTabRow windowId={windowId} />
+        </ThemeScope>
+      </PageProfileContext.Provider>
+    </Animated.View>
+  );
+}
+
 type PageRowsProps = {
   windowId: string;
   profileId: string;
@@ -358,18 +374,11 @@ function PageRows({ windowId, profileId, current, rows, lazy, offScreen, tiles, 
   const motion = useListMotion(windowId, profileId, all, captured, animated);
   const scope = useMemo(() => ({ enabled: animated, slideBelow: motion.slideBelow }), [animated, motion.slideBelow]);
   if (geometry) geometry.current.newTabAtTop = newTabsAtTop && inlineNewTab;
-  const measured = useRef(0);
-  useEffect(() => {
-    if (current && measured.current) onListHeight(measured.current);
-  }, [current]);
 
   return (
     <ListMotionContext.Provider value={scope}>
       <View
-        onLayout={(e) => {
-          measured.current = e.nativeEvent.layout.height + SCROLL_EDGE.inset - (inlineNewTab ? ROW_PITCH : 0);
-          if (current) onListHeight(measured.current);
-        }}
+        onLayout={(e) => onListHeight(e.nativeEvent.layout.height + SCROLL_EDGE.inset - (inlineNewTab ? ROW_PITCH : 0))}
       >
         {tiles.length ? <PinnedGrid tabs={tiles} innerWidth={innerWidth} flush /> : null}
         <View
