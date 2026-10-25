@@ -9,7 +9,7 @@ import { deleteLiveFolder, manualRefresh, newLiveFolder, openLiveItem, refreshFo
 import { ALERT_LEADS } from "../live/meetings";
 import { SOURCES } from "../live/sources";
 import { repoKey } from "../live/rows";
-import { hideItems, live, markRead, setLive, setRepoHidden, showAllRepos, updateCalendarSettings, updateFolder } from "../live/store";
+import { hideItems, live, markRead, setLive, setRepoHidden, updateCalendarSettings, updateFolder } from "../live/store";
 import type { LiveItem, LiveSourceId } from "../live/types";
 import { useBrowser } from "../browser/store";
 import { openSettings } from "../settings/settingsWindows";
@@ -54,7 +54,7 @@ export async function openLiveFolderMenu(windowId: string, folderId: string) {
   const pr = folder.kind === "pullRequests";
   const status = s.status[folderId];
   const hiddenRepos = new Set(folder.hiddenRepos);
-  const listed = [...(s.items[folderId] ?? []), ...(s.hidden[folderId] ?? [])].flatMap((it) => repoKey(it) ?? []);
+  const listed = [...(s.items[folderId] ?? []), ...(s.hidden[folderId] ?? []), ...(s.repoHidden[folderId] ?? [])].flatMap((it) => repoKey(it) ?? []);
   const repos = [...new Set([...listed, ...hiddenRepos])].map((key) => {
     const [source, name] = key.split(/:(.*)/) as [LiveSourceId, string];
     return { key, source, name };
@@ -111,7 +111,7 @@ export async function openLiveFolderMenu(windowId: string, folderId: string) {
   if (choice === "refresh") void manualRefresh(folderId);
   else if (option) updateFolder(folderId, { [option]: !folder[option] });
   else if (choice === "repos:all") {
-    showAllRepos(folderId);
+    updateFolder(folderId, { hiddenRepos: [] });
     void refreshFolder(folderId);
   } else if (choice.startsWith("repo:")) {
     const repo = choice.slice(5);
