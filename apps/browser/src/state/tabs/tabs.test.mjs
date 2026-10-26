@@ -64,6 +64,15 @@ test("tabs opened behind don't count as used until they're shown", () => {
   assert.equal(shown(w), "b", "not the tabs a opened behind");
 });
 
+test("closing a pane shows the split's other pane, not the tab used before the split", () => {
+  reset();
+  const [w, , b, c] = setup("a", "b", "c");
+  S().createSplit([b, c]);
+  S().activate(b);
+  S().closeTab(b);
+  assert.equal(shown(w), "c");
+});
+
 test("⌃Tab starts with the shown tab, then the tab you left, before a tab opened behind", () => {
   reset();
   const [w, a, b] = setup("a", "b", "c");

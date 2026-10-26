@@ -99,7 +99,7 @@ export function activated(s: BrowserState, id: string, shareLivePins = true): Pa
   const share = holder ? { pageIn: holder.id, url: holder.url, title: holder.title, favicon: holder.favicon, muted: holder.muted } : {};
   const now = Date.now();
   const nextTab: Tab = { ...rest, lastActiveAt: now, ...(frozen ? share : lazy ? wake(tab) : {}) };
-  const leaving = w.activeTabIds[tab.profileId];
+  const leaving = w.activeTabIds[w.profileId];
   const left = leaving && leaving !== id && s.tabs[leaving] ? { [leaving]: { ...s.tabs[leaving]!, lastActiveAt: now } } : {};
   const window: BrowserWindow = {
     ...w,

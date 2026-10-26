@@ -92,7 +92,9 @@ export function closeSuccessor(s: BrowserState, closed: string, order: string[],
   const nearest = [...left.filter((id) => order.indexOf(id) > at), ...left.filter((id) => order.indexOf(id) < at).reverse()];
   const awake = nearest.filter((id) => !s.tabs[id]!.unloaded);
   const visible = awake.filter((id) => !hiddenInGroup(s, id));
-  const pool = visible.length ? visible : awake.length ? awake : nearest;
+  const split = splitOf(s, closed)?.tabIds ?? [];
+  const panes = awake.filter((id) => split.includes(id));
+  const pool = panes.length ? panes : visible.length ? visible : awake.length ? awake : nearest;
   const used = pool.filter((id) => s.tabs[id]!.lastActiveAt > s.tabs[id]!.createdAt);
   return used.reduce<string | undefined>((best, id) => (!best || s.tabs[id]!.lastActiveAt > s.tabs[best]!.lastActiveAt ? id : best), undefined) ?? pool[0];
 }
