@@ -50,6 +50,23 @@ extension MainMenu {
     }
   }
 
+  static func takesKeyBeforePage(_ event: NSEvent) -> Bool {
+    let ids = MenuState.current.shortcutsBeforeWebsites
+    guard !ids.isEmpty, event.type == .keyDown else { return false }
+    let chord: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
+    let mods = event.modifierFlags.intersection(chord)
+    var key = (event.charactersIgnoringModifiers ?? "").lowercased()
+    if key == "\u{19}" { key = "\t" }
+    let keys = [key, event.characters(byApplyingModifiers: [])?.lowercased() ?? key]
+    var matches = false
+    walk(NSApp.mainMenu) { item, _ in
+      guard !matches, let item = item as? Rebindable, ids.contains(item.shortcutId), !item.keyEquivalent.isEmpty else { return }
+      let combo = shortcut(of: item)
+      matches = combo.mods.intersection(chord) == mods && keys.contains(combo.key)
+    }
+    return matches
+  }
+
   static func functionKey(_ key: Int) -> String { String(Character(UnicodeScalar(UInt16(key))!)) }
   static let leftArrow = functionKey(NSLeftArrowFunctionKey), rightArrow = functionKey(NSRightArrowFunctionKey)
   private static let caretArrows: Set<String> = [
@@ -157,6 +174,7 @@ extension MainMenu {
     func names(_ mods: NSEvent.ModifierFlags) -> [String] {
       modifierNames.filter { mods.contains($0.1) }.map(\.0)
     }
+    let reserved = ArdiaChromeWindowHost.reservedMenuIdentifiers
     for (id, group) in shortcutGroups() {
       let item = group.primary
       if let command = item as? CommandItem, dynamicCommands.contains(command.command) { continue }
@@ -174,7 +192,7 @@ extension MainMenu {
         "id": id, "title": item.defaultTitle, "path": group.path, "key": current.key,
         "modifiers": current.key.isEmpty ? [] : names(current.mods), "defaultKey": item.defaultKey,
         "defaultModifiers": item.defaultKey.isEmpty ? [] : names(item.defaultModifiers), "remappable": true,
-        "aliases": aliases,
+        "aliases": aliases, "alwaysBeforeWebsites": group.items.contains { reserved.contains($0.identifier?.rawValue ?? "") },
       ])
     }
     var seen = Set<String>()
@@ -187,6 +205,7 @@ extension MainMenu {
       list.append([
         "id": id, "title": item.title, "path": path, "key": current.key, "modifiers": mods,
         "defaultKey": current.key, "defaultModifiers": mods, "remappable": false, "aliases": [[String]](),
+        "alwaysBeforeWebsites": false,
       ])
     }
     return list

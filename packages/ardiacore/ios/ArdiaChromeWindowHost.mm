@@ -149,6 +149,18 @@ NSView *ArdiaWindowRootView(NSWindow *window) {
   return gRefusesUnhandledKey;
 }
 
++ (void)setTakesKeyBeforePageHandler:(BOOL (^)(NSEvent *))handler {
+  gTakesKeyBeforePage = [handler copy];
+}
+
++ (BOOL (^)(NSEvent *))takesKeyBeforePageHandler {
+  return gTakesKeyBeforePage;
+}
+
++ (NSSet<NSString *> *)reservedMenuIdentifiers {
+  return ReservedIdentifiers();
+}
+
 + (void)embedRootView:(NSView *)root inWindow:(NSWindow *)window {
   ArdiaWindowController *controller = [ArdiaWindowController forNSWindow:window];
   if (!controller) return;
