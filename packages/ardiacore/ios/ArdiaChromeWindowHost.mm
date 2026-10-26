@@ -149,12 +149,12 @@ NSView *ArdiaWindowRootView(NSWindow *window) {
   return gRefusesUnhandledKey;
 }
 
-+ (void)setTakesKeyBeforePageHandler:(BOOL (^)(NSEvent *))handler {
-  gTakesKeyBeforePage = [handler copy];
++ (void)setPerformsKeyBeforePageHandler:(BOOL (^)(NSEvent *))handler {
+  gPerformsKeyBeforePage = [handler copy];
 }
 
-+ (BOOL (^)(NSEvent *))takesKeyBeforePageHandler {
-  return gTakesKeyBeforePage;
++ (BOOL (^)(NSEvent *))performsKeyBeforePageHandler {
+  return gPerformsKeyBeforePage;
 }
 
 + (NSSet<NSString *> *)reservedMenuIdentifiers {

@@ -1,6 +1,34 @@
 import AppKit
 import ArdiaCore
 
+struct MenuKeyPress {
+  private static let relevant: NSEvent.ModifierFlags = [.command, .shift, .option, .control, .function]
+  private let key: String
+  private let mods: NSEvent.ModifierFlags
+  private let shiftedSymbol: Bool
+
+  init(_ event: NSEvent) {
+    var key = event.charactersIgnoringModifiers ?? ""
+    if key == "\u{7f}" { key = "\u{8}" }
+    if key == "\u{19}" { key = "\t" }
+    let functionKey = key.unicodeScalars.first.map { (0xF700...0xF8FF).contains($0.value) } ?? false
+    var mods = event.modifierFlags.intersection(Self.relevant)
+    if functionKey { mods.remove(.function) }
+    let printable = key.unicodeScalars.first.map { $0.value >= 0x20 && $0.value != 0x7f } ?? false
+    self.key = key.lowercased()
+    self.mods = mods
+    shiftedSymbol = printable && key.lowercased() == key.uppercased() && !functionKey
+  }
+
+  func matches(_ item: NSMenuItem) -> Bool {
+    guard !item.keyEquivalent.isEmpty, !item.isHidden || item.allowsKeyEquivalentWhenHidden,
+          item.keyEquivalent.lowercased() == key else { return false }
+    let itemMods = item.keyEquivalentModifierMask.intersection(Self.relevant)
+      .union(item.keyEquivalent != item.keyEquivalent.lowercased() ? .shift : [])
+    return itemMods == mods || (shiftedSymbol && itemMods.union(.shift) == mods)
+  }
+}
+
 extension MainMenu {
   private static let modifierNames: [(String, NSEvent.ModifierFlags)] = [
     ("control", .control), ("option", .option), ("shift", .shift), ("command", .command), ("function", .function),
@@ -50,21 +78,16 @@ extension MainMenu {
     }
   }
 
-  static func takesKeyBeforePage(_ event: NSEvent) -> Bool {
-    let ids = MenuState.current.shortcutsBeforeWebsites
-    guard !ids.isEmpty, event.type == .keyDown else { return false }
-    let chord: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
-    let mods = event.modifierFlags.intersection(chord)
-    var key = (event.charactersIgnoringModifiers ?? "").lowercased()
-    if key == "\u{19}" { key = "\t" }
-    let keys = [key, event.characters(byApplyingModifiers: [])?.lowercased() ?? key]
-    var matches = false
-    walk(NSApp.mainMenu) { item, _ in
-      guard !matches, let item = item as? Rebindable, ids.contains(item.shortcutId), !item.keyEquivalent.isEmpty else { return }
-      let combo = shortcut(of: item)
-      matches = combo.mods.intersection(chord) == mods && keys.contains(combo.key)
-    }
-    return matches
+  private static var itemsBeforePage: [NSMenuItem] = []
+
+  static func performBeforePage(_ event: NSEvent) -> Bool {
+    guard !itemsBeforePage.isEmpty, event.type == .keyDown else { return false }
+    let press = MenuKeyPress(event)
+    guard let item = itemsBeforePage.first(where: press.matches), let menu = item.menu else { return false }
+    menu.update()
+    guard item.isEnabled else { return false }
+    menu.performActionForItem(at: menu.index(of: item))
+    return true
   }
 
   static func functionKey(_ key: Int) -> String { String(Character(UnicodeScalar(UInt16(key))!)) }
@@ -167,6 +190,13 @@ extension MainMenu {
       bound.insert(comboKey(item.keyEquivalent, item.keyEquivalentModifierMask))
     }
     for case let item as CommandItem in profiles.items { item.followPrimaryShortcut(bound: bound) }
+    let beforePage = MenuState.current.shortcutsBeforeWebsites
+    itemsBeforePage = []
+    if !beforePage.isEmpty {
+      walk(NSApp.mainMenu) { item, _ in
+        if let item = item as? Rebindable, beforePage.contains(item.shortcutId) { itemsBeforePage.append(item) }
+      }
+    }
   }
 
   static func shortcutList() -> [[String: Any]] {

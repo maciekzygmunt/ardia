@@ -33,7 +33,7 @@ namespace ardia_window {
 
 NSMapTable<NSWindow *, ArdiaWindowController *> *Controllers();
 extern BOOL (^gRefusesUnhandledKey)(NSWindow *, NSEvent *);
-extern BOOL (^gTakesKeyBeforePage)(NSEvent *);
+extern BOOL (^gPerformsKeyBeforePage)(NSEvent *);
 
 void ConfigureWindow(NSWindow *window);
 extern const void *kLightsCenterKey;
