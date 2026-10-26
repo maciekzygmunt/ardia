@@ -100,7 +100,7 @@ export function activated(s: BrowserState, id: string, shareLivePins = true): Pa
   const now = Date.now();
   const nextTab: Tab = { ...rest, lastActiveAt: now, ...(frozen ? share : lazy ? wake(tab) : {}) };
   const leaving = w.activeTabIds[w.profileId];
-  const left = leaving && leaving !== id && s.tabs[leaving] ? { [leaving]: { ...s.tabs[leaving]!, lastActiveAt: now } } : {};
+  const left = leaving && leaving !== id && s.tabs[leaving] ? { [leaving]: { ...s.tabs[leaving]!, lastActiveAt: Math.max(now, s.tabs[leaving]!.createdAt + 1) } } : {};
   const window: BrowserWindow = {
     ...w,
     profileId: w.incognito ? w.profileId : tab.profileId,
