@@ -130,7 +130,8 @@ export function abandonedNewTabs(s: BrowserState, windowId: string): string[] {
 }
 
 export function recentTabIds(s: BrowserState, windowId: string, now = Date.now(), staleAfterMs = CLEAN_UP_AFTER_MS): string[] {
+  const active = activeTabId(s, windowId);
   const view = viewTabIds(s, windowId).map((id) => s.tabs[id]!);
-  const sorted = view.sort((a, b) => b.lastActiveAt - a.lastActiveAt);
+  const sorted = view.sort((a, b) => Number(b.id === active) - Number(a.id === active) || b.lastActiveAt - a.lastActiveAt);
   return sorted.filter((t, i) => i < 2 || now - t.lastActiveAt < staleAfterMs).map((t) => t.id);
 }
