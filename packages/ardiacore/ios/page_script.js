@@ -558,6 +558,33 @@
     }
   };
   handlers.wakeFrames = () => apply(raf, window, [() => {}]);
+  const commandWheelTag = "ardia:commandWheel";
+  const dispatchCommandWheel = (wheel) => {
+    const { id, x, y, dx, dy, shift, alt, ctrl } = wheel;
+    let target = document.elementFromPoint(x, y);
+    for (let inner; target && target.shadowRoot && (inner = target.shadowRoot.elementFromPoint(x, y)) && inner !== target; ) target = inner;
+    if (target && /^I?FRAME$/.test(target.tagName) && target.contentWindow) {
+      const box = target.getBoundingClientRect();
+      const style = getComputedStyle(target);
+      const left = box.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+      const insetTop = box.top + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop);
+      return target.contentWindow.postMessage({ [commandWheelTag]: { ...wheel, x: x - left, y: y - insetTop } }, "*");
+    }
+    if (!target || /^(EMBED|OBJECT)$/.test(target.tagName)) return send("commandWheel", { id, handler: "browser" });
+    const event = new WheelEvent("wheel", {
+      bubbles: true, cancelable: true, composed: true, view: window,
+      clientX: x, clientY: y, screenX: screenX + x, screenY: screenY + y,
+      deltaX: dx, deltaY: dy, deltaMode: 0,
+      metaKey: true, shiftKey: !!shift, altKey: !!alt, ctrlKey: !!ctrl,
+    });
+    target.dispatchEvent(event);
+    send("commandWheel", { id, handler: event.defaultPrevented ? "page" : "browser" });
+  };
+  handlers.commandWheel = (wheel) => dispatchCommandWheel({ ...wheel, x: wheel.x * innerWidth, y: wheel.y * innerHeight });
+  addEventListener("message", (e) => {
+    const wheel = e.source === parent && e.data && e.data[commandWheelTag];
+    if (wheel) guard(dispatchCommandWheel)(wheel);
+  });
 
   const pauseUnasked = (media, activated) => {
     if (activated) return 0;
