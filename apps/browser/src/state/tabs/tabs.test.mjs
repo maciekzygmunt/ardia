@@ -73,13 +73,14 @@ test("closing a pane shows the split's other pane, not the tab used before the s
   assert.equal(shown(w), "c");
 });
 
-test("⌃Tab starts with the shown tab, then the tab you left, before a tab opened behind", () => {
+test("⌃Tab starts with the shown tab, then the tab you left, before tabs opened behind", () => {
   reset();
   const [w, a, b] = setup("a", "b", "c");
   S().activate(b);
   open(w, "l", b);
   S().activate(a);
-  assert.deepEqual(organize.recentTabIds(S(), w).slice(0, 3).map((id) => short(S().tabs[id].url)), ["a", "b", "l"]);
+  open(w, "m", a);
+  assert.deepEqual(organize.recentTabIds(S(), w).map((id) => short(S().tabs[id].url)), ["a", "b", "c", "m", "l"]);
 });
 
 test("closing a group that holds the shown tab shows the tab just above the group", () => {
