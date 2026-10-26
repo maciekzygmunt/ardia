@@ -176,12 +176,16 @@ export function usePictureInPicture(tabId: string): [boolean, (press: GestureRes
 }
 
 useBrowser.subscribe((s, prev) => {
-  if (s.tabs === prev.tabs) return;
   const m = useMedia.getState();
   const keys = ["sessions", "dismissed", "pip", "pipOpen", "displayRequests", "tabShares"] as const;
-  const gone = [...new Set(keys.flatMap((k) => Object.keys(m[k])))].filter((id) => !s.tabs[id]);
-  if (!gone.length) return;
+  const gone = s.tabs === prev.tabs ? [] : [...new Set(keys.flatMap((k) => Object.keys(m[k])))].filter((id) => !s.tabs[id]);
+  const leftQuiet = Object.keys(m.sessions).filter((id) => {
+    const profileId = s.tabs[id]?.profileId;
+    return !m.dismissed[id] && !isPlaying(m.sessions[id]) && isTabShown(prev, id, profileId) && !isTabShown(s, id, profileId);
+  });
+  if (!gone.length && !leftQuiet.length) return;
   const next = Object.fromEntries(keys.map((k) => [k, { ...m[k] }])) as Pick<Store, (typeof keys)[number]>;
+  for (const id of leftQuiet) next.dismissed[id] = true;
   for (const id of gone) for (const k of keys) delete next[k][id];
   useMedia.setState(next);
 });
