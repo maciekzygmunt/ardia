@@ -4,28 +4,37 @@ import ArdiaCore
 struct MenuKeyPress {
   private static let relevant: NSEvent.ModifierFlags = [.command, .shift, .option, .control, .function]
   private let key: String
+  private let unshiftedKey: String
   private let mods: NSEvent.ModifierFlags
   private let shiftedSymbol: Bool
 
+  private static func normalized(_ characters: String?) -> String {
+    switch characters ?? "" {
+    case "\u{7f}": return "\u{8}"
+    case "\u{19}": return "\t"
+    case let key: return key
+    }
+  }
+
   init(_ event: NSEvent) {
-    var key = event.charactersIgnoringModifiers ?? ""
-    if key == "\u{7f}" { key = "\u{8}" }
-    if key == "\u{19}" { key = "\t" }
+    let key = Self.normalized(event.charactersIgnoringModifiers)
     let functionKey = key.unicodeScalars.first.map { (0xF700...0xF8FF).contains($0.value) } ?? false
     var mods = event.modifierFlags.intersection(Self.relevant)
     if functionKey { mods.remove(.function) }
     let printable = key.unicodeScalars.first.map { $0.value >= 0x20 && $0.value != 0x7f } ?? false
     self.key = key.lowercased()
+    unshiftedKey = Self.normalized(event.characters(byApplyingModifiers: [])).lowercased()
     self.mods = mods
     shiftedSymbol = printable && key.lowercased() == key.uppercased() && !functionKey
   }
 
   func matches(_ item: NSMenuItem) -> Bool {
-    guard !item.keyEquivalent.isEmpty, !item.isHidden || item.allowsKeyEquivalentWhenHidden,
-          item.keyEquivalent.lowercased() == key else { return false }
+    guard !item.keyEquivalent.isEmpty, !item.isHidden || item.allowsKeyEquivalentWhenHidden else { return false }
+    let equivalent = item.keyEquivalent.lowercased()
     let itemMods = item.keyEquivalentModifierMask.intersection(Self.relevant)
-      .union(item.keyEquivalent != item.keyEquivalent.lowercased() ? .shift : [])
-    return itemMods == mods || (shiftedSymbol && itemMods.union(.shift) == mods)
+      .union(item.keyEquivalent != equivalent ? .shift : [])
+    if equivalent == key { return itemMods == mods || (shiftedSymbol && itemMods.union(.shift) == mods) }
+    return equivalent == unshiftedKey && itemMods == mods
   }
 }
 
@@ -83,10 +92,23 @@ extension MainMenu {
   static func performBeforePage(_ event: NSEvent) -> Bool {
     guard !itemsBeforePage.isEmpty, event.type == .keyDown else { return false }
     let press = MenuKeyPress(event)
-    guard let item = itemsBeforePage.first(where: press.matches), let menu = item.menu else { return false }
-    menu.update()
-    guard item.isEnabled else { return false }
-    menu.performActionForItem(at: menu.index(of: item))
+    var updated = Set<ObjectIdentifier>()
+    for item in itemsBeforePage where press.matches(item) && shownInMenuBar(item) {
+      guard let menu = item.menu else { continue }
+      if updated.insert(ObjectIdentifier(menu)).inserted { menu.update() }
+      guard item.isEnabled else { continue }
+      menu.performActionForItem(at: menu.index(of: item))
+      return true
+    }
+    return false
+  }
+
+  private static func shownInMenuBar(_ item: NSMenuItem) -> Bool {
+    var menu = item.menu
+    while let child = menu, let parent = child.supermenu {
+      guard let owner = parent.items.first(where: { $0.submenu === child }), !owner.isHidden else { return false }
+      menu = parent
+    }
     return true
   }
 

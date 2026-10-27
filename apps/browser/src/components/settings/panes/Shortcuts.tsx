@@ -120,7 +120,7 @@ export function ShortcutsPane() {
                     {overrides[item.id] && (
                       <Button variant="icon" icon="arrow.uturn.backward" size={11} box={24} radius={6} onPress={() => setShortcut(item.id, null)} tooltip="Reset to Default" />
                     )}
-                    {item.remappable && !!effective(item).key && (
+                    {item.remappable && (!!effective(item).key || beforeWebsites.includes(item.id)) && (
                       <PrecedenceButton
                         always={item.alwaysBeforeWebsites}
                         beforeWebsites={beforeWebsites.includes(item.id)}
