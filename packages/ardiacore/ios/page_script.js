@@ -566,9 +566,12 @@
     if (target && /^I?FRAME$/.test(target.tagName) && target.contentWindow) {
       const box = target.getBoundingClientRect();
       const style = getComputedStyle(target);
-      const left = box.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
-      const insetTop = box.top + parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop);
-      return target.contentWindow.postMessage({ [commandWheelTag]: { ...wheel, x: x - left, y: y - insetTop } }, "*");
+      const scaleX = target.offsetWidth ? box.width / target.offsetWidth : 1;
+      const scaleY = target.offsetHeight ? box.height / target.offsetHeight : 1;
+      const insetLeft = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+      const insetTop = parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop);
+      const inner = { x: (x - box.left) / scaleX - insetLeft, y: (y - box.top) / scaleY - insetTop };
+      return target.contentWindow.postMessage({ [commandWheelTag]: { ...wheel, ...inner } }, "*");
     }
     if (!target || /^(EMBED|OBJECT)$/.test(target.tagName)) return send("commandWheel", { id, handler: "browser" });
     const event = new WheelEvent("wheel", {

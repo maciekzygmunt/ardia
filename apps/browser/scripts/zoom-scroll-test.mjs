@@ -18,11 +18,12 @@ const server = createServer((req, res) => {
   if (req.url === "/framed-tall")
     return res.end(`<!doctype html><title>framed tall</title><body style="margin:0"><iframe src="/" style="border:0;width:100vw;height:100vh">`);
   if (req.url === "/framed")
-    return res.end(`<!doctype html><title>map 0</title><body style="margin:0"><iframe src="/map" style="border:0;width:100vw;height:100vh">`);
+    return res.end(`<!doctype html><title>framed</title><body style="margin:0"><iframe src="/map" style="border:0;width:100vw;height:100vh">`);
   if (req.url === "/map")
-    return res.end(`<!doctype html><title>map 0</title><body style="margin:0"><div id="map" style="height:100vh"></div><script>
+    return res.end(`<!doctype html><title>map</title><body style="margin:0"><div id="map" style="height:100vh"></div><script>
       let zooms = 0;
       map.addEventListener("wheel", (e) => { if (e.metaKey) { e.preventDefault(); top.document.title = "map " + ++zooms; } }, { passive: false });
+      top.document.title = "map 0";
     </script>`);
   res.end(`<!doctype html><title>tall</title><body style="font:20px system-ui;height:6000px"><h1>tall</h1>`);
 });
