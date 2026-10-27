@@ -168,6 +168,7 @@ export function GroupPanel({ groupId, windowId, anchor, windowHeight }: { groupI
         contentContainerStyle={{ paddingVertical: LIST_PAD }}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
+        alwaysBounceHorizontal={false}
         scrollEventThrottle={16}
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           offset.current = e.nativeEvent.contentOffset.y;

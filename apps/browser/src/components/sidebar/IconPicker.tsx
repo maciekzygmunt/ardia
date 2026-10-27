@@ -106,7 +106,7 @@ function PickerPanel({ picker, sidebarWidth }: { picker: Picker; sidebarWidth: n
             </Pressable>
           ))}
         </View>
-        <ScrollView style={{ maxHeight: CELL * 6 }} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}>
+        <ScrollView style={{ maxHeight: CELL * 6 }} showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} alwaysBounceHorizontal={false}>
           <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
             {items.map((icon) => (
               <Cell key={icon} icon={icon} selected={icon === current} onPress={() => choose(icon)} />
