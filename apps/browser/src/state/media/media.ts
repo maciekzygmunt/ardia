@@ -44,6 +44,9 @@ export function setPictureInPictureState(tabId: string, { kind, active }: Pictur
   });
 }
 
+const LATE_PAUSE_MS = 500;
+const leftPlayingAt = new Map<string, number>();
+
 export function setNowPlaying(tabId: string, state: NowPlaying | null) {
   useMedia.setState((s) => {
     const sessions = { ...s.sessions };
@@ -57,6 +60,8 @@ export function setNowPlaying(tabId: string, state: NowPlaying | null) {
     const started = isControllablyPlaying(state) && !(before && isControllablyPlaying(before));
     sessions[tabId] = { ...state, playedAt: started ? Date.now() : (before?.playedAt ?? 0) };
     if (started) delete dismissed[tabId];
+    const pausedAsItLeft = state.playbackState !== "playing" && isPlaying(before) && Date.now() - (leftPlayingAt.get(tabId) ?? -Infinity) < LATE_PAUSE_MS;
+    if (pausedAsItLeft) dismissed[tabId] = true;
     return { sessions, dismissed };
   });
 }
@@ -183,6 +188,11 @@ useBrowser.subscribe((s, prev) => {
     const profileId = s.tabs[id]?.profileId;
     return !m.dismissed[id] && !isPlaying(m.sessions[id]) && isTabShown(prev, id, profileId) && !isTabShown(s, id, profileId);
   });
+  for (const id of Object.keys(m.sessions)) {
+    const profileId = s.tabs[id]?.profileId;
+    if (isPlaying(m.sessions[id]) && isTabShown(prev, id, profileId) && !isTabShown(s, id, profileId)) leftPlayingAt.set(id, Date.now());
+  }
+  for (const id of gone) leftPlayingAt.delete(id);
   if (!gone.length && !leftQuiet.length) return;
   const next = Object.fromEntries(keys.map((k) => [k, { ...m[k] }])) as Pick<Store, (typeof keys)[number]>;
   for (const id of leftQuiet) next.dismissed[id] = true;
