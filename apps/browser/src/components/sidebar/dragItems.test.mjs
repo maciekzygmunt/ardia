@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { DragItems } from "./dragItems.ts";
 
-const controller = () => ({ items: new Map(), marks: null });
-const item = (name) => ({ name });
+const controller = (active = false) => ({ items: new Map(), marks: null, active });
+const item = (name) => {
+  let gap = 12;
+  return { name, gap: { stopAnimation() {}, setValue: (v) => (gap = v), value: () => gap } };
+};
 
 test("a page's items reach the controller only while the page is live", () => {
   const c = controller();
@@ -40,4 +43,20 @@ test("a removed item leaves the controller, and doesn't come back when the page 
   page.setLive(false);
   page.setLive(true);
   assert.equal(c.items.size, 0);
+});
+
+test("a page left during a drag closes its gaps, since the drag's reset only reaches the live page", () => {
+  const dragging = controller(true);
+  const page = new DragItems(dragging, true);
+  const row = item("row");
+  page.add("row", row);
+  page.setLive(false);
+  assert.equal(row.gap.value(), 0);
+
+  const idle = controller(false);
+  const other = new DragItems(idle, true);
+  const kept = item("kept");
+  other.add("kept", kept);
+  other.setLive(false);
+  assert.equal(kept.gap.value(), 12);
 });

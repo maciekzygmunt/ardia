@@ -52,7 +52,7 @@ export function DragScope({ enabled, children }: { enabled: boolean; children: R
 
 export const useDragController = () => useContext(DragContext) ?? undefined;
 const useItemMarks = () => useContext(DragItemsContext)?.controller.marks ?? noDragMarks;
-export const useDropInto = () => useStore(useItemMarks(), (m) => m.dropInto);
+export const useDropInto = (groupId: string) => useStore(useItemMarks(), (m) => m.dropInto === groupId);
 export const useDropOnto = (key: string) => useStore(useItemMarks(), (m) => m.onto === key);
 export const useDropPins = () => useStore(useContext(DragContext)?.marks ?? noDragMarks, (m) => m.pins);
 export const usePinSlots = (cells: string[]) =>

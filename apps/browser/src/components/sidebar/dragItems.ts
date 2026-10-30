@@ -24,8 +24,15 @@ export class DragItems {
     if (this.live === live) return;
     this.live = live;
     for (const [key, item] of this.own) {
-      if (live) this.controller.items.set(key, item);
-      else this.withdraw(key, item);
+      if (live) {
+        this.controller.items.set(key, item);
+        continue;
+      }
+      if (this.controller.active) {
+        item.gap.stopAnimation();
+        item.gap.setValue(0);
+      }
+      this.withdraw(key, item);
     }
   }
 
